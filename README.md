@@ -7,24 +7,24 @@ First of all, configure AWS' Command Line Interface locally so you can access th
 
 Now, let's create a repository in AWS ECR to host our docker image. You can either do this using the web interface, or the command line
 as follows. Make sure you specify a name for your repository where indicated by the `<repository-name>` argument:
-```
+```sh
 # aws ecr create-repository --repository-name <repository-name>
 ```
 
 In order to upload your docker image to ECR, you'll need to login first from your terminal. Running the following command
 will output a `docker login ...` command that you can copy and paste in the terminal window to authenticate your session:
-```
+```sh
 # aws ecr get-login --no-include-email
 ```
 
 If you don't have your AWS account number around, you can run the following command to get it. You are going to need this 
 account number to build and push the docker image to ECR:
-```
+```sh
 # aws sts get-caller-identity --query Account
 ```
 
 Building the docker image can be done running the following command:
-```
+```sh
 # docker build -t <account-id>.dkr.ecr.us-east-1.amazonaws.com/<repository-name>:latest .
 ```
 
@@ -33,7 +33,7 @@ repository that you created before.
 
 After the image finishes building, you can push it up to ECR. The image is quite large so you can expect the operation to 
 take a few minutes depending on the speed of your connection:
-```
+```sh
 # docker push <account-id>.dkr.ecr.us-east-1.amazonaws.com/<repository-name>:latest
 ```
 
@@ -87,7 +87,7 @@ initiate the training process and will inform you when it finished.
 To get your model up and running on SageMaker, create a new Notebook instance using SageMaker's web interface and open Jupyter as soon as it's ready.
 On that notebook, you can add the following code in a cell:
 
-```
+```python
 import boto3
 from sagemaker import get_execution_role
 from sagemaker.amazon.amazon_estimator import get_image_uri
@@ -164,7 +164,7 @@ to test it with the code below.
 
 First, let's define a simple function to visualize the predictions (detections) made by our model:
 
-```
+```python
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 
@@ -205,7 +205,7 @@ def visualize_prediction(image_file, predictions, classes=[], threshold=0.6):
 
 Then, we can download a sample image, and invoke our model endpoint to obtain the list of predictions back:
 
-```
+```python
 import json
 import base64
 
