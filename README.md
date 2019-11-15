@@ -64,7 +64,8 @@ To upload all of these files, first create a bucket in S3 and here and follow th
 (following TensorFlow's convention of naming these files as yourfile.record-00000-00010, and so on and so forth.)
 
 2. The pipeline configuration file should be uploaded with the name `pipeline.config`. If you wish to change this name, you'll have to modify
-it in the `train` file that's part of the docker image.
+it in the `train` file that's part of the docker image. Before uploading this file to S3, make sure you follow the instructions [explained 
+below](#Modifying the pipeline.config) around modifying this file.
 
 3. Upload the entire pre-trained model that you get from [the model zoo page](https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/detection_model_zoo.md). Unzip it first, and upload the entire folder. It can be named however you'd like.
 
@@ -80,6 +81,9 @@ At the end, the content of your S3 bucket will look something like this:
 - pipeline.config
 - label_map.pbtxt
 ```
+
+## Modifying the pipeline.config
+TBD
 
 ## Setting up a SageMaker training job
 
