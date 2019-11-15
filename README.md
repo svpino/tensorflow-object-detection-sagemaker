@@ -39,7 +39,47 @@ take a few minutes depending on the speed of your connection:
 
 ## Uploading relevant resources to S3
 
-TBD
+Now that your docker image is out of the way, you have to create and upload all the relevant resources to S3 so SageMaker can make them
+available to your image. Assuming you want to train your model on SageMaker (instead of just serve a model that was already trained) here 
+is what you need to upload:
+
+* TFRecord files with your training and validation data. You can read more about TFRecords 
+[here](https://www.tensorflow.org/tutorials/load_data/tfrecord#tfrecords_format_details). These files will contain your training and 
+validation images plus annotations. 
+
+* The pipeline configuration file. This file contains the configuration of the specific algorithm that you use for training. A template of
+the appropriate file comes with each one of the pre-trained models offered on 
+[this repository](https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/detection_model_zoo.md).
+
+* The pre-trained model checkpoint. If you are planning to use Transfer Learning to kickstart your training, you'll need to provide the 
+pre-trained model checkpoint so the algorithm can start from there.
+
+* The list of labels you are trying to detect. This is usually provided as a `label_map.pbtxt` file. 
+[Here is an example](https://github.com/tensorflow/models/blob/master/research/object_detection/data/pet_label_map.pbtxt) illustrating the 
+format of this file.
+
+To upload all of these files, first create a bucket in S3 and here and follow these instructions:
+
+1. The TFRecord files with your training and validation data could be named however you like. You could also upload multiple TFRecord files 
+(following TensorFlow's convention of naming these files as yourfile.record-00000-00010, and so on and so forth.)
+
+2. The pipeline configuration file should be uploaded with the name `pipeline.config`. If you wish to change this name, you'll have to modify
+it in the `train` file that's part of the docker image.
+
+3. Upload the entire pre-trained model that you get from [the model zoo page](https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/detection_model_zoo.md). Unzip it first, and upload the entire folder. It can be named however you'd like.
+
+4. The label map file should be uploaded as `label_map.pbtxt`. If you wish to change this name, you'll have to modify it in the `train` and
+`serve` files that are part of the docker image.
+
+At the end, the content of your S3 bucket will look something like this:
+
+```
+- faster_rcnn_resnet50_coco_2018_01_28/
+- train.record
+- validation.record
+- pipeline.config
+- label_map.pbtxt
+```
 
 ## Setting up a SageMaker training job
 
@@ -69,13 +109,14 @@ parameter is ignored if `quantize` is `False`. If not specified, this value defa
 values. This parameter is ignored if `quantize` is `False`. If not specified, this value defaults to `FLOAT`.
 
 __Input data configuration:__ We want to create a couple of channels under this section to allow SageMaker to expose the necessary resources to
-our docker image:
+our docker image (it will do so by "mounting" a volume in our docker image so we can access the files directly from there):
 
 * `testing`: This channel will expose our data and configuration files to our docker image. Make sure to set the channel name property to 
-`testing`, the input mode to `File`, the data source to `S3`, and the S3 location to the S3 location we created before.
+`testing`, the input mode to `File`, the data source to `S3`, and the S3 location to the S3 bucket we created before.
 
 * `checkpoint`: The second channel will expose our pre-trained network to our docker image. Set the channel name property to 
-`checkpoint`, the input mode to `File`, the data source to `S3`, and the S3 location to the S3 folder that contains our pre-trainer network files.
+`checkpoint`, the input mode to `File`, the data source to `S3`, and the S3 location to the S3 folder that contains our pre-trainer network files 
+(this would be pointing to the `faster_rcnn_resnet50_coco_2018_01_28/` folder in our example above.)
 
 __Output data configuration:__ When our model finishes training, SageMaker will upload the final resources to this location. Set this field to 
 the S3 location where you want to store the output of the training process. 
