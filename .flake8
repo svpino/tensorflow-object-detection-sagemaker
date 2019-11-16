@@ -1,0 +1,9 @@
+[flake8]
+exclude = 
+    .git,
+    .vscode,
+    __pycache__,
+    build,
+    dist
+count = True
+max-line-length = 160

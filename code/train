@@ -37,8 +37,6 @@ channel_name = 'training'
 training_path = os.path.join(input_path, channel_name)
 
 
-#tfrecord_train_path = os.path.join(input_path, 'train/train.records')
-#tfrecord_val_path = os.path.join(input_path, 'validation/validation.records')
 tfrecord_label_path = os.path.join(training_path, 'label_map.pbtxt')
 tfrecord_config_path = os.path.join(training_path, 'pipeline.config')
 tfrecord_pretrained_checkpoint_path = os.path.join(input_path, 'checkpoint/')
@@ -56,7 +54,6 @@ if __name__ == '__main__':
 
         # Amazon SageMaker makes our specified hyperparameters available within the
         # /opt/ml/input/config/hyperparameters.json.
-        # https://docs.aws.amazon.com/sagemaker/latest/dg/your-algorithms-training-algo.html#your-algorithms-training-algo-running-container
         with open(param_path, 'r') as tc:
             training_params = json.load(tc)
 
