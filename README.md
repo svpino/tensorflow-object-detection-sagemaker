@@ -76,7 +76,7 @@ At the end, the content of your S3 bucket will look something like this:
 
 ```
 - faster_rcnn_resnet50_coco_2018_01_28/
-- train.record
+- training.record
 - validation.record
 - pipeline.config
 - label_map.pbtxt
@@ -115,8 +115,8 @@ values. This parameter is ignored if `quantize` is `False`. If not specified, th
 __Input data configuration:__ We want to create a couple of channels under this section to allow SageMaker to expose the necessary resources to
 our docker image (it will do so by "mounting" a volume in our docker image so we can access the files directly from there):
 
-* `testing`: This channel will expose our data and configuration files to our docker image. Make sure to set the channel name property to 
-`testing`, the input mode to `File`, the data source to `S3`, and the S3 location to the S3 bucket we created before.
+* `training`: This channel will expose our data and configuration files to our docker image. Make sure to set the channel name property to 
+`training`, the input mode to `File`, the data source to `S3`, and the S3 location to the S3 bucket we created before.
 
 * `checkpoint`: The second channel will expose our pre-trained network to our docker image. Set the channel name property to 
 `checkpoint`, the input mode to `File`, the data source to `S3`, and the S3 location to the S3 folder that contains our pre-trainer network files 
