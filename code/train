@@ -42,10 +42,10 @@ tfrecord_config_path = os.path.join(training_path, 'pipeline.config')
 tfrecord_pretrained_checkpoint_path = os.path.join(input_path, 'checkpoint/')
 
 # default params
-training_script = '/opt/ml/code/models/research/object_detection/model_main.py'
-freezing_script = '/opt/ml/code/models/research/object_detection/export_inference_graph.py'
-lite_freezing_script = '/opt/ml/code/models/research/object_detection/export_tflite_ssd_graph.py'
-lite_quant_script = '/opt/ml/code/models/research/object_detection/export_tflite_ssd_graph.py'
+training_script = '/opt/ml/code/tensorflow-models/research/object_detection/model_main.py'
+freezing_script = '/opt/ml/code/tensorflow-models/research/object_detection/export_inference_graph.py'
+lite_freezing_script = '/opt/ml/code/tensorflow-models/research/object_detection/export_tflite_ssd_graph.py'
+lite_quant_script = '/opt/ml/code/tensorflow-models/research/object_detection/export_tflite_ssd_graph.py'
 
 
 if __name__ == '__main__':

@@ -30,12 +30,12 @@ RUN pip install pycocotools
 
 # Let's now download Tensorflow from the official Git repository and install Tensorflow Slim from
 # its folder.
-RUN git clone https://github.com/tensorflow/models/
-RUN pip install -e models/research/slim
+RUN git clone https://github.com/tensorflow/models/ tensorflow-models
+RUN pip install -e tensorflow-models/research/slim
 
 # We can now install the Object Detection API, also part of the Tensorflow repository. We are going to change
 # the working directory for a minute so we can do this easily.
-WORKDIR /opt/ml/code/models/research
+WORKDIR /opt/ml/code/tensorflow-models/research
 RUN protoc object_detection/protos/*.proto --python_out=.
 RUN python setup.py build
 RUN python setup.py install
@@ -43,15 +43,15 @@ RUN python setup.py install
 # If you are interested in using COCO evaluation metrics, you can tun the following commands to add the
 # necessary resources to your Tensorflow installation.
 RUN git clone https://github.com/cocodataset/cocoapi.git
-WORKDIR /opt/ml/code/models/research/cocoapi/PythonAPI
+WORKDIR /opt/ml/code/tensorflow-models/research/cocoapi/PythonAPI
 RUN make 
-RUN cp -r pycocotools /opt/ml/code/models/research/
+RUN cp -r pycocotools /opt/ml/code/tensorflow-models/research/
 
 # Let's put the working directory back to where it needs to be, copy all of our code, and update the PYTHONPATH
 # to include the newly installed Tensorflow libraries.
 WORKDIR /opt/ml/code
 COPY /code /opt/ml/code
-ENV PYTHONPATH=${PYTHONPATH}:models/research:models/research/slim:models/research/object_detection
+ENV PYTHONPATH=${PYTHONPATH}:tensorflow-models/research:tensorflow-models/research/slim:tensorflow-models/research/object_detection
 
 RUN chmod +x train
 RUN chmod +x serve
