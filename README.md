@@ -262,7 +262,7 @@ import json
 import base64
 
 # Let's download a sample image from the web and save it locally as test.jpg.
-!wget -O test.jpg <image_url>
+!wget -O test.jpg <IMAGE_URL>
 image_file = 'test.jpg'
 
 with open(image_file, "rb") as image:
@@ -313,6 +313,7 @@ docker run
     -p 8080:8080 
     -v <local-path-to-model-folder>:/opt/ml/model 
     -e MODEL_SERVER_WORKERS=1
+    --name "tensorflow-object-detection"
     tensorflow-object-detection:1.15.0-cpu serve
 ```
 
@@ -324,7 +325,7 @@ import base64
 import requests
 
 if __name__ == '__main__':
-    image_file = 'test.jpg'
+    image_file = <LOCAL_IMAGE_FILE>
 
     with open(image_file, "rb") as image:
         encoded_string = base64.b64encode(image.read())
