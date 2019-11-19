@@ -1,4 +1,5 @@
-FROM tensorflow/tensorflow:1.15.0-gpu-py3
+ARG ARCHITECTURE=1.15.0-gpu
+FROM tensorflow/tensorflow:${ARCHITECTURE}-py3
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         wget zip unzip git ca-certificates curl nginx

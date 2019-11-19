@@ -8,33 +8,39 @@ First of all, configure AWS' Command Line Interface locally so you can access th
 Now, let's create a repository in AWS ECR to host our docker image. You can either do this using the web interface, or the command line
 as follows. Make sure you specify a name for your repository where indicated by the `<repository-name>` argument:
 ```sh
-# aws ecr create-repository --repository-name <repository-name>
+aws ecr create-repository --repository-name <repository-name>
+```
+
+If you don't have your AWS account identifier around, you can run the following command to get it. You are going to need this 
+account number to build and push the docker image to ECR:
+```sh
+aws sts get-caller-identity --query Account
 ```
 
 In order to upload your docker image to ECR, you'll need to login first from your terminal. Running the following command
-will output a `docker login ...` command that you can copy and paste in the terminal window to authenticate your session:
+will get your session authenticated (make sure you replace `<account-id>` by your account identifier from the previous
+step):
 ```sh
-# aws ecr get-login --no-include-email
+$(aws ecr get-login --no-include-email --registry-id <account-id>)
 ```
 
-If you don't have your AWS account number around, you can run the following command to get it. You are going to need this 
-account number to build and push the docker image to ECR:
+To build your docker image you'll use the following command:
 ```sh
-# aws sts get-caller-identity --query Account
-```
-
-Building the docker image can be done running the following command:
-```sh
-# docker build -t <account-id>.dkr.ecr.us-east-1.amazonaws.com/<repository-name>:latest .
+docker build 
+        -t <account-id>.dkr.ecr.us-east-1.amazonaws.com/<repository-name>:1.15.0-gpu 
+        --build-arg ARCHITECTURE=1.15.0-gpu .
 ```
 
 Notice that you have to replace `<account-id>` by your AWS account identifier and `<repository-name>` by the name of the 
-repository that you created before.
+repository that you created before. Also, the `ARCHITECTURE` build argument supports the specific tag of the base image
+depending on which version you want to build. For example:
+* To build an image from the latest version of TensorFlow with GPU support, set `ARCHITECTURE=1.15.0-gpu`.
+* To build an image from the latest version of TensorFlow with CPU support, set `ARCHITECTURE=1.15.0`.
 
 After the image finishes building, you can push it up to ECR. The image is quite large so you can expect the operation to 
 take a few minutes depending on the speed of your connection:
 ```sh
-# docker push <account-id>.dkr.ecr.us-east-1.amazonaws.com/<repository-name>:latest
+docker push <account-id>.dkr.ecr.us-east-1.amazonaws.com/<repository-name>:1.15.0-gpu
 ```
 
 ## Uploading relevant resources to S3
@@ -91,8 +97,8 @@ To train a model using the image you just uploaded, you need to create a trainin
 sections of the configuration of the training job that you need to update:
 
 __Algorithm source:__ Here you'll select "Your own algorithm container in ECR". In the container path field you will specify your image 
-`<account-id>.dkr.ecr.us-east-1.amazonaws.com/<repository-name>:latest`. (Make sure you replace the `<account-id>` and `<repository-name>`
-placeholders.)
+`<account-id>.dkr.ecr.us-east-1.amazonaws.com/<repository-name>:1.15.0-gpu`. (Make sure you replace the `<account-id>` and `<repository-name>`
+placeholders. Also, make sure you specify the proper version of your image.)
 
 __Resource configuration:__ Select an appropriate instance type for your training needs (make sure it's Accelerated Computing so it enables
 GPU training,) and enough GBs of additional storage volume to your instance. Failing to supply enough storage space will cause the training 
@@ -122,7 +128,7 @@ our docker image (it will do so by "mounting" a volume in our docker image so we
 `checkpoint`, the input mode to `File`, the data source to `S3`, and the S3 location to the S3 folder that contains our pre-trainer network files 
 (this would be pointing to the `faster_rcnn_resnet50_coco_2018_01_28/` folder in our example above.)
 
-__Output data configuration:__ When our model finishes training, SageMaker will upload the final resources to this location. Set this field to 
+__Output data configuration:__ When our model finishes training, SageMaker will upload your model results to this location. Set this field to 
 the S3 location where you want to store the output of the training process. 
 
 At this point, and unless you want to tweak any of the other settings on the training job screen, you can create your training job. SageMaker will
@@ -255,7 +261,7 @@ import json
 import base64
 
 # Let's download a sample image from the web and save it locally as test.jpg.
-!wget -O test.jpg http://farm8.staticflickr.com/7198/6933992703_316b97d2cb_z.jpg
+!wget -O test.jpg <image_url>
 image_file = 'test.jpg'
 
 with open(image_file, "rb") as image:
@@ -284,5 +290,50 @@ visualize_predictions(
     threshold=0.2)
 ```
 
-## Running your model on-premises
-TBD
+## Running your model locally
+You can run inference using your trained model locally by running the docker image on your computer. This is also
+useful when you want to deploy your model on-premises and don't want to rely on AWS to use it.
+
+To do this, first you'll need to download your trained model from S3. SageMaker saved your trained model in 
+the S3 location that you specified when configuring your training job. Inside the folder that you specified, there's 
+a `model.tar.gz` file that you will need to download and untar locally. You'll mount this folder to the docker image 
+so it can use your model to run inference.
+
+Starting the docker image with the `serve` command will start a gunicorn server that will be listening for any HTTP 
+POST requests to the `/invocations` location. This server will be listening on port `8080`, so we need to make sure
+to map that port to a local port.
+
+Finally, when running locally, you can specify the timeout and the number of workers that gunicorn will use through
+environment variables. 
+
+Here is an example command that will run the docker image and will make it listen to port 8080 locally:
+
+```sh
+docker run 
+    -p 8080:8080 
+    -v <local-path-to-model-folder>:/opt/ml/model 
+    -e MODEL_SERVER_WORKERS=1
+    tensorflow-object-detection:1.15.0-cpu serve
+```
+
+After having the docker image running, you can use the following script to run inference on an image (the script depends
+on the `requests` library that you can install running `pip install requests`):
+
+```python
+import base64
+import requests
+
+if __name__ == '__main__':
+    image_file = 'test.jpg'
+
+    with open(image_file, "rb") as image:
+        encoded_string = base64.b64encode(image.read())
+
+    body = {
+        "image": encoded_string.decode('utf-8')
+    }
+
+    response = requests.post('http://127.0.0.1:8080/invocations', json=body)
+
+    print(response.json())
+```
