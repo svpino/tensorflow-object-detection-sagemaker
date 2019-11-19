@@ -149,14 +149,13 @@ sagemaker = boto3.Session().client(service_name='sagemaker')
 
 # Before anything else, we need to set these variables appropriately.
 #
-# TRAINING_JOB_NAME should be the name of the training job that you
-# used to train your model.
+# TRAINING_JOB_NAME should be the name of the training job that we
+# used to train the model.
 #
-# DOCKER_IMAGE should point to the docker image that you created to
-# train and serve your model.
-TRAINING_JOB_NAME = 'nee-im-pets-7'
-DOCKER_IMAGE = '116894939376.dkr.ecr.us-east-1.amazonaws.com/tfod:latest'
-
+# DOCKER_IMAGE should point to the docker image that trains and serves
+# the model.
+TRAINING_JOB_NAME = <SAGEMAKER_TRAINING_JOB_NAME>
+DOCKER_IMAGE = <DOCKER_IMAGE>
 model_name = TRAINING_JOB_NAME
 
 training_job = sagemaker.describe_training_job(TrainingJobName=TRAINING_JOB_NAME)
@@ -172,8 +171,8 @@ response = sagemaker.create_model(
 
 print('Model:', response['ModelArn'])
 
-# Now, we need to create an Endpoint configuration. Make sure you 
-# select an appropriate instance type to run inference on your model.
+# Now, we need to create an Endpoint configuration. Make sure to select
+# an appropriate instance type to run inference on the model.
 endpoint_configuration_name = TRAINING_JOB_NAME + '-endpoint-configuration'
 
 response = sagemaker.create_endpoint_config(
@@ -203,11 +202,10 @@ while status == 'Creating':
     sagemaker.get_waiter('endpoint_in_service').wait(EndpointName=endpoint_name)
     response = sagemaker.describe_endpoint(EndpointName=endpoint_name)
     status = response['EndpointStatus']
-    print('Endpoint status: ', status)
+    print('Endpoint status:', status)
 
 if status != 'InService':
     print('Endpoint creation failed')
-
 ```
 
 It will take some time to create and provision the instance running our docker image, but when is done, you should be ready
@@ -219,8 +217,9 @@ First, let's define a simple function to visualize the predictions (detections) 
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 
-def visualize_prediction(image_file, predictions, classes=[], threshold=0.6):
+def visualize_predictions(image_file, predictions, classes=[], threshold=0.6):
     image = mpimg.imread(image_file)
+    plt.figure(figsize = (20,20))
     plt.imshow(image)
     
     height = image.shape[0]
@@ -229,7 +228,9 @@ def visualize_prediction(image_file, predictions, classes=[], threshold=0.6):
     for prediction in predictions['prediction']:
         (class_id, confidence, x0, y0, x1, y1) = prediction
         if confidence >= threshold:
-            cls_id = int(klass)
+            # Our model uses base 1 to represent the different classes, so
+            # we need to convert it to base 0 for our purposes.
+            class_id = int(class_id) - 1
             xmin = int(x0 * width)
             ymin = int(y0 * height)
             xmax = int(x1 * width)
@@ -240,17 +241,17 @@ def visualize_prediction(image_file, predictions, classes=[], threshold=0.6):
                 xmax - xmin, 
                 ymax - ymin, 
                 fill=False, 
-                edgecolor=(0, 0, 255), 
+                edgecolor='r', 
                 linewidth=2.0)
             
             plt.gca().add_patch(rectangle)
-            class_name = classes[cls_id]
+            class_name = classes[class_id]
             
             plt.gca().text(
                 xmin, 
                 ymin - 2,
-                '{:s} {:.3f}'.format(class_name, score),
-                bbox=dict(facecolor=(0, 0, 255), alpha=0.5), fontsize=12, color='white')
+                '{:s} {:.3f}'.format(class_name, confidence),
+                bbox=dict(facecolor='r', alpha=0.5), fontsize=12, color='white')
     plt.show()
 ```
 
@@ -266,7 +267,6 @@ image_file = 'test.jpg'
 
 with open(image_file, "rb") as image:
     encoded_string = base64.b64encode(image.read())
-    
     
 # Now we can invoke our endpoint providing the image as a base64 string.
 sagemaker-runtime = boto3.client('sagemaker-runtime')
@@ -286,8 +286,8 @@ predictions = json.loads(response['Body'].read().decode("utf-8"))
 visualize_predictions(
     image_file=image_file, 
     predictions=predictions, 
-    classes=['Class A', 'Class B'], 
-    threshold=0.2)
+    classes=['Class 1', 'Class 2'], 
+    threshold=0.85)
 ```
 
 ## Running your model locally
@@ -300,11 +300,11 @@ a `model.tar.gz` file that you will need to download and untar locally. You'll m
 so it can use your model to run inference.
 
 Starting the docker image with the `serve` command will start a gunicorn server that will be listening for any HTTP 
-POST requests to the `/invocations` location. This server will be listening on port `8080`, so we need to make sure
+`POST` requests to the `/invocations` location. This server will be listening on port `8080`, so we need to make sure
 to map that port to a local port.
 
-Finally, when running locally, you can specify the timeout and the number of workers that gunicorn will use through
-environment variables. 
+Finally, when running locally, you can specify the timeout (`MODEL_SERVER_TIMEOUT`) and the number of workers (`MODEL_SERVER_WORKERS`)
+that gunicorn will use through environment variables.
 
 Here is an example command that will run the docker image and will make it listen to port 8080 locally:
 
