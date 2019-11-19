@@ -27,8 +27,8 @@ $(aws ecr get-login --no-include-email --registry-id <account-id>)
 To build your docker image you'll use the following command:
 ```sh
 docker build 
-        -t <account-id>.dkr.ecr.us-east-1.amazonaws.com/<repository-name>:1.15.0-gpu 
-        --build-arg ARCHITECTURE=1.15.0-gpu .
+    -t <account-id>.dkr.ecr.us-east-1.amazonaws.com/<repository-name>:1.15.0-gpu 
+    --build-arg ARCHITECTURE=1.15.0-gpu .
 ```
 
 Notice that you have to replace `<account-id>` by your AWS account identifier and `<repository-name>` by the name of the 
@@ -298,6 +298,14 @@ To do this, first you'll need to download your trained model from S3. SageMaker 
 the S3 location that you specified when configuring your training job. Inside the folder that you specified, there's 
 a `model.tar.gz` file that you will need to download and untar locally. You'll mount this folder to the docker image 
 so it can use your model to run inference.
+
+You can run the docker image that you built before, or you can build it again using a different tag to run it locally:
+
+```sh
+docker build 
+    -t tensorflow-object-detection:1.15.0-cpu 
+    --build-arg ARCHITECTURE=1.15.0 .
+```
 
 Starting the docker image with the `serve` command will start a gunicorn server that will be listening for any HTTP 
 `POST` requests to the `/invocations` location. This server will be listening on port `8080`, so we need to make sure
