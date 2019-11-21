@@ -26,8 +26,8 @@ $(aws ecr get-login --no-include-email --registry-id <account-id>)
 
 To build your docker image you'll use the following command:
 ```sh
-docker build 
-    -t <account-id>.dkr.ecr.us-east-1.amazonaws.com/<repository-name>:1.15.0-gpu 
+docker build \
+    -t <account-id>.dkr.ecr.us-east-1.amazonaws.com/<repository-name>:1.15.0-gpu \
     --build-arg ARCHITECTURE=1.15.0-gpu .
 ```
 
@@ -302,8 +302,8 @@ so it can use your model to run inference.
 You can run the docker image that you built before, or you can build it again using a different tag to run it locally:
 
 ```sh
-docker build 
-    -t tensorflow-object-detection:1.15.0-cpu 
+docker build \
+    -t tensorflow-object-detection:1.15.0-cpu \
     --build-arg ARCHITECTURE=1.15.0 .
 ```
 
@@ -317,11 +317,11 @@ that gunicorn will use through environment variables.
 Here is an example command that will run the docker image and will make it listen to port 8080 locally:
 
 ```sh
-docker run 
-    -p 8080:8080 
-    -v <local-path-to-model-folder>:/opt/ml/model 
-    -e MODEL_SERVER_WORKERS=1
-    --name "tensorflow-object-detection"
+docker run \
+    -p 8080:8080 \
+    -v <local-path-to-model-folder>:/opt/ml/model \
+    -e MODEL_SERVER_WORKERS=1 \
+    --name "tensorflow-object-detection" \
     tensorflow-object-detection:1.15.0-cpu serve
 ```
 
