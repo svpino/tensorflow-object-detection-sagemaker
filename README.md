@@ -1,4 +1,6 @@
-# TensorFlow Docker Image to run Object Detection on SageMaker
+# Running TensorFlow Object Detection on SageMaker
+
+[Here is an article](https://www.shiftedup.com/2020/01/15/deploying-tensorflow-object-detection-models-on-sagemaker) talking a little bit about this project. Feel free to skip; the interesting stuff is all here.
 
 ## Building and pushing the docker image to ECR
 
