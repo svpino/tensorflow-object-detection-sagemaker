@@ -19,6 +19,7 @@ import signal
 import subprocess
 import sys
 
+
 cpu_count = multiprocessing.cpu_count()
 
 model_server_timeout = os.environ.get('MODEL_SERVER_TIMEOUT', 60)
@@ -49,6 +50,7 @@ def start_server():
     nginx = subprocess.Popen(['nginx', '-c', '/opt/ml/code/nginx.conf'])
     gunicorn = subprocess.Popen(['gunicorn',
                                  '--timeout', str(model_server_timeout),
+                                 #'--log-level=debug', 
                                  '-k', 'gevent',
                                  '-b', 'unix:/tmp/gunicorn.sock',
                                  '-w', str(model_server_workers),
