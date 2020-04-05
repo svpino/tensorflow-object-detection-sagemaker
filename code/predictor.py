@@ -7,22 +7,43 @@ import logging
 import logging.config
 import boto3
 import tempfile
+import requests
 import numpy as np
 
 from urllib.parse import urlparse
 from flask import Flask, request, Response
 
 from PIL import Image
+from PIL import ImageFile
 
 from model import Model
 
 
+ImageFile.LOAD_TRUNCATED_IMAGES = True
+
 PREFIX_PATH = "/opt/ml/"
 CACHE_PATH = os.path.join(PREFIX_PATH, "cache")
 MODEL_PATH = os.path.join(PREFIX_PATH, "model")
-FROZEN_GRAPH_PATH = os.path.join(MODEL_PATH, "frozen_inference_graph.pb")
+PRETRAINED_MODEL_PATH = os.path.join(PREFIX_PATH, "pretrained")
 LABEL_PATH = os.path.join(MODEL_PATH, "label_map.pbtxt")
-PARAM_PATH = os.path.join(MODEL_PATH, "hyperparameters.json")
+
+DEFAULT_MODEL = "faster_rcnn_resnet101_coco"
+
+PRETRAINED_MODELS = [
+    "ssd_mobilenet_v1_coco.pb",
+    "ssd_mobilenet_v2_coco.pb",
+    "faster_rcnn_resnet101_coco.pb",
+    "rfcn_resnet101_coco.pb",
+    "faster_rcnn_inception_v2_coco.pb",
+    "ssd_inception_v2_coco.pb",
+    "faster_rcnn_resnet50_coco.pb",
+    "faster_rcnn_resnet50_lowproposals_coco.pb",
+    "faster_rcnn_resnet101_lowproposals_coco.pb",
+    "faster_rcnn_inception_resnet_v2_atrous_coco.pb",
+    "faster_rcnn_inception_resnet_v2_atrous_lowproposals_coco.pb",
+    "faster_rcnn_nas_coco.pb",
+    "faster_rcnn_nas_lowproposals_coco.pb",
+]
 
 
 class Configuration:
@@ -30,6 +51,8 @@ class Configuration:
         self.file = data.get("file", None)
         self.image = data.get("image", None)
         self.stride = data.get("stride", 1)
+
+        self.model = data.get("model", DEFAULT_MODEL)
 
         self.cache = data.get("cache", False)
         self.cache_id = data.get("cache_id", None)
@@ -60,37 +83,39 @@ class Cache:
 
 
 class Processor:
-    model = None
-    training_params = None
+    models = {}
 
     @staticmethod
     def factory(configuration: Configuration):
         if configuration.image is not None or (
             configuration.file is not None
-            and configuration.file[len(configuration.file) - 4 :] in (".jpg", ".png",)
+            and configuration.file.lower().endswith((".jpg", ".png", ".jpeg"))
         ):
             return ImageProcessor(configuration, Cache(configuration))
 
         return None
 
-    @classmethod
-    def get_training_params(self):
-        if self.training_params is None:
-            with open(PARAM_PATH, "r") as tc:
-                self.training_params = json.load(tc)
+    @staticmethod
+    def get_model(frozen_graph=DEFAULT_MODEL):
+        # If the frozen graph was specified without the extension, let's
+        # set it here.
+        if not frozen_graph.lower().endswith(".pb"):
+            frozen_graph += ".pb"
 
-        return self.training_params
+        # Now we need to load the protobuf frozen graph. To do that we
+        # need to determine whether the model is one of the pre-trained
+        # models that come with the container or a new model specified
+        # by the user.
+        model_path = (
+            os.path.join(PRETRAINED_MODEL_PATH, frozen_graph)
+            if frozen_graph in PRETRAINED_MODELS
+            else os.path.join(MODEL_PATH, frozen_graph)
+        )
 
-    @classmethod
-    def predict(self, image):
-        return self.get_model().inference(image)
+        if frozen_graph not in Processor.models:
+            Processor.models[frozen_graph] = Model(LABEL_PATH, model_path)
 
-    @classmethod
-    def get_model(self):
-        if self.model is None:
-            self.model = Model(LABEL_PATH, FROZEN_GRAPH_PATH)
-
-        return self.model
+        return Processor.models[frozen_graph]
 
     def __init__(self, configuration: Configuration, cache: Cache):
         self.configuration = configuration
@@ -99,6 +124,9 @@ class Processor:
     def inference(self):
         # This method should be implemented on the sub-classes.
         pass
+
+    def predict(self, image):
+        return Processor.get_model(self.configuration.model).inference(image)
 
 
 class ImageProcessor(Processor):
@@ -119,7 +147,7 @@ class ImageProcessor(Processor):
         if predictions is None:
             logging.debug(f"Inference from image not found in cache")
             image = self.__get_image()
-            inference = Processor.predict(image)
+            inference = self.predict(image)
 
             predictions = {"predictions": []}
 
@@ -168,6 +196,12 @@ class ImageProcessor(Processor):
                     fragments = urlparse(self.__get_source(), allow_fragments=False)
                     if fragments.scheme == "s3":
                         image = self.__get_image_from_s3(self.__get_source(), fragments)
+                    elif fragments.scheme == "http" or fragments.scheme == "https":
+                        image = self.__get_image_from_url(self.__get_source())
+                    else:
+                        image = self.__get_image_from_file(
+                            self.__get_source(), fragments
+                        )
 
                 self.cache.put(source_cache_key, image)
             except Exception as e:
@@ -178,6 +212,8 @@ class ImageProcessor(Processor):
         return image
 
     def __get_image_from_base64_string(self, source) -> np.array:
+        logging.info(f"Creating image from base64 string...")
+
         image = Image.open(io.BytesIO(source))
         return self.__numpy(image)
 
@@ -200,6 +236,34 @@ class ImageProcessor(Processor):
         with open(tmp.name, "wb") as f:
             s3.download_fileobj(fragments.netloc, fragments.path[1:], f)
             return self.__numpy(Image.open(tmp.name))
+
+    def __get_image_from_url(self, file) -> np.array:
+        logging.info(f"Downloading image from URL. Filename {file}...")
+
+        tmp = tempfile.NamedTemporaryFile()
+
+        with open(tmp.name, "wb") as f:
+            response = requests.get(file, stream=True)
+
+            if not response.ok:
+                raise RuntimeError(
+                    f"There was an error downloading image from URL. Filename {file}. Response {response}."
+                )
+
+            for block in response.iter_content(1024):
+                if not block:
+                    break
+                f.write(block)
+
+            return self.__numpy(Image.open(tmp.name))
+
+    def __get_image_from_file(self, file, fragments) -> np.array:
+        logging.info(f"Downloading image from file. Filename {file}...")
+
+        if fragments.scheme == "file":
+            return self.__numpy(Image.open(fragments.path))
+
+        return self.__numpy(Image.open(file))
 
     def __get_key(self, file: str, suffix: str):
         tmp = hashlib.md5(str(file).encode("utf8"))
@@ -233,97 +297,22 @@ def ping():
     return Response(response="\n", status=status, mimetype="application/json")
 
 
-@app.route("/deleteme", methods=["POST"])
-def delete_me():
-    """
-    logging.info("Invoked with content_type {}".format(request.content_type))
-
-    if request.content_type == "application/json":
-        logging.info("Running inference on image...")
-
-        body = request.get_json()
-        image_data = base64.b64decode(body["image"])
-
-        if "threshold" in body:
-            threshold = body["threshold"]
-        else:
-            threshold = 0.0
-
-        training_params = ScoringService.get_training_params()
-
-        image_size = (
-            int(training_params["image_size"])
-            if "image_size" in training_params
-            else 300
-        )
-
-        # run inference on image
-        inference_result = ScoringService.predict(image_data, image_size)
-
-        # convert inference result to json
-        prediction_objects = []
-        predictions = {}
-        detection_classes = inference_result["detection_classes"]
-        detection_boxes = inference_result["detection_boxes"]
-        detection_scores = inference_result["detection_scores"]
-        for index, detection_class in enumerate(detection_classes):
-            detection_box = detection_boxes[index].astype(float)
-            detection_score = float(detection_scores[index])
-            if detection_score < threshold:
-                continue
-
-            ymin = detection_box[0]
-            xmin = detection_box[1]
-            ymax = detection_box[2]
-            xmax = detection_box[3]
-
-            prediction_object = [
-                float(detection_class - 1),
-                detection_score,
-                xmin,
-                ymin,
-                xmax,
-                ymax,
-            ]
-
-            prediction_objects.append(prediction_object)
-
-        predictions["prediction"] = prediction_objects
-
-        return Response(
-            response=json.dumps(predictions), status=200, mimetype="application/json"
-        )
-
-    return Response(
-        response='{"reason" : "Request is not application/x-image"}',
-        status=400,
-        mimetype="application/json",
-    )
-    """
-    pass
-
-
 @app.route("/invocations", methods=["POST"])
 def invoke():
     """
     TODO:
 
-    * Add support to provide http image
-    * Add support to provide local image (file instead of S3)
-    
     * Add support to provide a threshold.
+    * What happens if there are no detections?
+    * Is the "return only these classes" working?
+    * If I already have cache for the final result, why do we need to cache the file?
+
+    * Add support to multiple (batch) images: https://stackoverflow.com/questions/49750520/run-inference-for-single-imageimage-graph-tensorflow-object-detection
 
     * Add support to provide a video: file | stride
 
     * Implement gRPC interface
-
-    * What happens if there are no detections?
-    * Is the "return only these classes" working?
-    * What should we do with the hyperparameters.json?
-
-    * Add support to use different frozen models.
-
-
+    
     """
 
     if request.content_type == "application/json":

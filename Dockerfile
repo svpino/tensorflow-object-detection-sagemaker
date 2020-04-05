@@ -20,6 +20,11 @@ ENV PATH="/opt/ml/code:${PATH}"
 RUN mkdir -p /opt/ml/code
 WORKDIR /opt/ml/code
 
+# Let's copy all of the pre-trained models that should be pre-installed with the
+# container.
+RUN mkdir -p /opt/ml/pretrained
+COPY /pretrained /opt/ml/pretrained
+
 COPY requirements.txt .
 
 RUN pip install --upgrade pip
