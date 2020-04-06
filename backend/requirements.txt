@@ -1,0 +1,11 @@
+contextlib2
+pillow
+lxml
+matplotlib
+flask
+gevent
+gunicorn
+pycocotools
+pyyaml
+boto3
+requests

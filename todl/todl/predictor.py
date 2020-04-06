@@ -1,6 +1,5 @@
 import os
 import io
-import json
 import base64
 import hashlib
 import logging
@@ -11,12 +10,11 @@ import requests
 import numpy as np
 
 from urllib.parse import urlparse
-from flask import Flask, request, Response
 
 from PIL import Image
 from PIL import ImageFile
 
-from model import Model
+from todl.model import Model
 
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
@@ -273,61 +271,3 @@ class ImageProcessor(Processor):
     def __numpy(self, image):
         (width, height) = image.size
         return np.array(image.getdata()).reshape((height, width, 3)).astype(np.uint8)
-
-
-app = Flask(__name__)
-logging.basicConfig(level=logging.DEBUG)
-
-# gunicorn_error_logger = logging.getLogger('gunicorn.error')
-# app.logger.handlers.extend(gunicorn_error_logger.handlers)
-# app.logger.setLevel(logging.DEBUG)
-
-
-@app.route("/ping", methods=["GET"])
-def ping():
-    """This endpoint determines whether the container is working and healthy.
-    We know everything is working appropriately if the model can be loaded
-    successfully.
-    """
-    logging.info("Ping received...")
-
-    health = Processor.get_model() is not None
-
-    status = 200 if health else 404
-    return Response(response="\n", status=status, mimetype="application/json")
-
-
-@app.route("/invocations", methods=["POST"])
-def invoke():
-    """
-    TODO:
-
-    * Add support to provide a threshold.
-    * What happens if there are no detections?
-    * Is the "return only these classes" working?
-    * If I already have cache for the final result, why do we need to cache the file?
-
-    * Add support to multiple (batch) images: https://stackoverflow.com/questions/49750520/run-inference-for-single-imageimage-graph-tensorflow-object-detection
-
-    * Add support to provide a video: file | stride
-
-    * Implement gRPC interface
-    
-    """
-
-    if request.content_type == "application/json":
-        configuration = Configuration(request.get_json())
-        processor = Processor.factory(configuration)
-        result = processor.inference()
-
-        logging.debug(f"Inference result {result}")
-
-        return Response(
-            response=json.dumps(result), status=200, mimetype="application/json",
-        )
-
-    return Response(
-        response='{"reason" : "Request is not application/x-image"}',
-        status=400,
-        mimetype="application/json",
-    )
