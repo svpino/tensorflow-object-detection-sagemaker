@@ -54,11 +54,12 @@ RUN pip install -r requirements.txt
 WORKDIR /opt/ml/code
 COPY /code /opt/ml/code
 
-RUN pip install todl==0.1.1
+#RUN pip install doodl[tensorflow]
+RUN pip install doodl_tensorflow-0.1.0.0-py3-none-any.whl
+RUN pip install doodl-0.1.0.0-py3-none-any.whl[tensorflow]
 
 #ENV PYTHONPATH=${PYTHONPATH}:tensorflow-models/research:tensorflow-models/research/slim:tensorflow-models/research/object_detection
 #ENV PYTHONPATH=${PYTHONPATH}:tensorflow-models/research:tensorflow-models/research/slim:tensorflow-models/research/object_detection
-
 
 RUN chmod +x train
 RUN chmod +x serve
