@@ -1,3 +1,3 @@
-[submodule "todl/tensorflow-object-detection"]
-	path = todl/tensorflow-object-detection
+[submodule "doodl_tensorflow/tensorflow-object-detection"]
+	path = doodl_tensorflow/tensorflow-object-detection
 	url = https://github.com/tensorflow/models.git

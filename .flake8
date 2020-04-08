@@ -6,4 +6,4 @@ exclude =
     build,
     dist
 count = True
-max-line-length = 160
+max-line-length = 88
