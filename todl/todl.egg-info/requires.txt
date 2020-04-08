@@ -1,9 +1,0 @@
-setuptools>=41.0.0
-tensorflow==1.15
-cython
-numpy
-Pillow
-contextlib2
-matplotlib
-boto3
-requests
