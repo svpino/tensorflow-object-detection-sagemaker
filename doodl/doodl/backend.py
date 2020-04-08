@@ -15,7 +15,6 @@ class Backend:
                     backend = TensorflowBackend(
                         model=configuration.model,
                         model_path=configuration.model_path,
-                        model_label_path=configuration.model_label_path,
                     )
 
                     Backend.backends[backend_key] = backend

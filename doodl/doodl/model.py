@@ -1,53 +1,65 @@
 import json
-import ast
-import base64
 import requests
 import numpy as np
 
-from doodl import Configuration, ImagePredictor, Cache
-
-
-class NumpyJsonSerializer(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, np.ndarray):
-            data = base64.b64encode(np.ascontiguousarray(obj).data)
-            return dict(
-                __ndarray__=data.decode("utf-8"), dtype=str(obj.dtype), shape=obj.shape
-            )
-
-        return json.JSONEncoder.default(self, obj)
-
-    @staticmethod
-    def decoder(obj):
-        source = obj
-        if isinstance(source, str):
-            try:
-                source = ast.literal_eval(obj)
-            except Exception:
-                return obj
-
-        if isinstance(source, dict) and "__ndarray__" in source:
-            data = base64.b64decode(source["__ndarray__"])
-            return np.frombuffer(data, source["dtype"]).reshape(source["shape"])
-
-        return source
+from doodl import Configuration, ImagePredictor, Cache, NumpyJsonSerializer
 
 
 class Model:
     """
-    This is the Model class.
+    Represents an Object Detection model capable of running inference on images.
+    This class is the main interaction point with the object detection backend.
 
+    Attributes:
+        configuration(doodl.configuration.Configuration): The configuration settings
+            used to initialize this model.
 
-    # TODO:
-
-    * Add new endpoint (inference) to REST backend.
-
+    Args:
+        configuration(doodl.configuration.Configuration, optional): The configuration
+            that should be used to set up the model, defaults to None
     """
 
     def __init__(self, configuration: Configuration):
         self.configuration = configuration or Configuration()
 
     def inference(self, source):
+        """
+        Runs the object detection process on the provided source and returns the list
+        of detections.
+
+        The format of the output is a dictionary with a single *predictions* entry
+        containing a 2-dimensional array where every row represents a single detection,
+        and six columns with following values:
+
+        * Column 0: The identifier of the detected class.
+        * Column 1: The confidence score on the detection.
+        * Column 2: The *xmin* normalized value of the detected box.
+        * Column 3: The *ymin* normalized value of the detected box.
+        * Column 4: The *xmax* normalized value of the detected box.
+        * Column 5: The *ymax* normalized value of the detected box.
+
+        Example:
+            Here is an example of a result including two detections::
+
+                {
+                    'predictions': [
+                        [0.0, 0.99, 0.18, 0.18, 0.36, 0.68],
+                        [2.0, 0.99, 0.52, 0.30, 0.92, 0.63]
+                    ]
+                }
+
+        Args:
+            source(object): The image where we want to run inference. This argument
+                supports an HTTP/S or AWS S3 URL pointing to the object, or a
+                3-dimensional numpy array representing the image.
+        Returns:
+            dict: A dictionary with a single *predictions* entry containing the list
+                of detected objects found in the source image.
+        Raises:
+            RuntimeError: if an error happens while running the object detection
+                process.
+        """
+
         if source is None:
             raise ValueError('The "source" attribute shouldn\'t be empty')
 

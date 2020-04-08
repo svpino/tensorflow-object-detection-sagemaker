@@ -1,9 +1,7 @@
 import os
 import json
-import numpy as np
 import logging
 import logging.config
-import base64
 
 from flask import Flask, request, Response, jsonify
 
@@ -21,9 +19,8 @@ PREFIX_PATH = "/opt/ml/"
 CACHE_PATH = os.path.join(PREFIX_PATH, "cache")
 MODEL_PATH = os.path.join(PREFIX_PATH, "model")
 PRETRAINED_MODEL_PATH = os.path.join(PREFIX_PATH, "pretrained")
-LABEL_PATH = os.path.join(MODEL_PATH, "label_map.pbtxt")
 
-DEFAULT_MODEL = "faster_rcnn_resnet101_coco.pb"
+DEFAULT_MODEL = "faster_rcnn_inception_v2_coco.pb"
 
 PRETRAINED_MODELS = [
     "ssd_mobilenet_v1_coco.pb",
@@ -55,48 +52,31 @@ def ping():
     return Response(response="\n", status=status, mimetype="application/json")
 
 
+@app.route("/inference", methods=["POST"])
 @app.route("/invocations", methods=["POST"])
 def invoke():
     """
     TODO:
     * Should cache key should include model that provided results?
-    * Handle exceptions. They should bubble to the REST api response
+    * How should we use the cache_id? Maybe as a folder?
     * What happens if there are no detections?
     * Is the "return only these classes" working?
 
     * Add support to provide a threshold.
 
-    ##### Implement interface library to access backend #####
-
-    * Interface should allow to use classes directly (when installed on same notebook)
-    * Interface should allow to connect to container hosted somewhere
-
-    configuration = Configuration(
-        protocol=Protocol.gRPC,
-        endpoint="127.0.0.1:67878",
-        model="rfcn_resnet101_coco.pb",
-        aws_region="us-east-1",
-        aws_access_key="key",
-        aws_secret_access_key="secret",
-        cache=True
-    )
-
-    detector = Detector(configuration)
-
-    detections = detector.inference(file=["s3://vinsa-object-detection/test2.jpg"])
-
-    ###################################
-
-    * Add support to multiple (batch) images: https://stackoverflow.com/questions/49750520/run-inference-for-single-imageimage-graph-tensorflow-object-detection
-    * Add support to provide a video: file | stride
-    * Implement gRPC interface
-
-
     * Check that we are exporting the right modules:
         import re
         print(dir(re))
 
-    * Raise error if source is not specified.
+    * Should we print the results on the backend logs?
+
+    * Prepare notebook with example on how to use this.
+
+    --- v2 ---
+
+    * Add support to multiple (batch) images: https://stackoverflow.com/questions/49750520/run-inference-for-single-imageimage-graph-tensorflow-object-detection
+    * Add support to provide a video: file | stride
+    * Implement gRPC interface
 
     """
 
@@ -159,9 +139,6 @@ def __get_source(source):
 
 
 def __update_model_reference(configuration):
-    if not configuration.model_label_path:
-        configuration.model_label_path = LABEL_PATH
-
     if not configuration.model:
         configuration.model = DEFAULT_MODEL
 
