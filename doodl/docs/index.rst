@@ -1,5 +1,5 @@
-doodl
-=====
+Doodl - Object Detection Library
+================================
 
 .. toctree::
    :maxdepth: 2
@@ -9,15 +9,4 @@ doodl
    installation
    quickstart
    tutorial
-
-   
-User's Guide
-^^^^^^^^^^^^
-
-This is text that will go here.
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
-
-
+   doodl
