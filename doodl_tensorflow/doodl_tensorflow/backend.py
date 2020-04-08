@@ -7,10 +7,10 @@ from object_detection.utils import label_map_util
 
 
 class TensorflowBackend:
-    def __init__(self, model, model_path, model_label_path, **kwargs):
+    def __init__(self, model, model_path, **kwargs):
         self.model = model
         self.model_path = os.path.join(model_path, self.model)
-        self.label_path = model_label_path
+        self.label_path = os.path.join(model_path, "label_map.pbtxt")
 
         self.__load_graph()
 
