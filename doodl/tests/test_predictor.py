@@ -1,9 +1,6 @@
-import pytest
 import numpy as np
 
-from doodl import Predictor, Configuration, ImagePredictor, Cache
-
-from mocks import MockBackend1, MockBackend2
+from doodl import Configuration, ImagePredictor, Cache
 
 
 class MockCache(Cache):
@@ -40,9 +37,6 @@ class MockImagePredictor2(ImagePredictor):
 
     def _get_image_from_file(self, source):
         return "file"
-
-    def _get_image_from_base64(self, source):
-        return "base64"
 
 
 def test_predictor_supports_custom_cache():
@@ -121,13 +115,7 @@ def test_get_image_supports_file():
     predictor = MockImagePredictor2(configuration, MockCache(configuration))
 
     assert predictor._get_image("file:///etc/tmp/file.jpg") == 'file'
-
-
-def test_get_image_supports_base64():
-    configuration = Configuration(cache=True)
-    predictor = MockImagePredictor2(configuration, MockCache(configuration))
-
-    assert predictor._get_image("base64-string-here") == 'base64'
+    assert predictor._get_image("/etc/tmp/file.jpg") == 'file'
 
 
 def test_get_image_supports_ndarray():

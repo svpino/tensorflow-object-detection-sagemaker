@@ -8,10 +8,13 @@ def test_cache_is_disbled_by_default():
 
 
 def test_put_get():
-    cache = Cache(Configuration(cache=True))
+    configuration = Configuration(cache=True)
+    cache = Cache(configuration)
 
     cache.put("key", "value")
-    cache_file_path = os.path.join(cache.cache_path, "key.npz")
+    cache_file_path = os.path.join(
+        cache.cache_path, configuration.cache_hash, "key.npz"
+    )
     assert os.path.exists(cache_file_path) is True
 
     value = cache.get("key")
@@ -21,20 +24,28 @@ def test_put_get():
 
 
 def test_put_shouldnt_cache_if_disabled():
-    cache = Cache(Configuration(cache=False))
+    configuration = Configuration(cache=False)
+    cache = Cache(configuration)
 
     cache.put("key", "value")
-    assert os.path.exists("key.npz") is False
+    cache_file_path = os.path.join(
+        cache.cache_path, configuration.cache_hash, "key.npz"
+    )
+    assert os.path.exists(cache_file_path) is False
 
 
 def test_get_should_return_none_if_disabled():
-    cache = Cache(Configuration(cache=True))
+    configuration = Configuration(cache=True)
+    cache = Cache(configuration)
 
     cache.put("key", "value")
-    cache_file_path = os.path.join(cache.cache_path, "key.npz")
-    assert os.path.exists(cache_file_path) is True
+    # assert os.path.exists(cache_file_path) is True
+    assert cache.get("key") == "value"
 
     cache.enabled = False
     assert cache.get("key") is None
 
+    cache_file_path = os.path.join(
+        cache.cache_path, configuration.cache_hash, "key.npz"
+    )
     os.remove(cache_file_path)

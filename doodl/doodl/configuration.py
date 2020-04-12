@@ -1,16 +1,22 @@
+import uuid
+import string
+import unicodedata
+
+
 class Configuration:
     """
     Configuration object holding all the available settings to instantiate
     a :class:`~doodl.model.Model` object.
     """
 
+    _VALID_CHARACTERS = "-_.()%s%s" % (string.ascii_letters, string.digits)
+
     def __init__(self, **kwargs):
         self.endpoint = kwargs.get("endpoint", None)
         self.model = kwargs.get("model", None)
 
         self.cache = kwargs.get("cache", False)
-
-        self.cache_id = kwargs.get("cache_id", None)
+        self.cache_hash = kwargs.get("cache_hash", uuid.uuid4().hex)
 
         self.aws_region = kwargs.get("aws_region", None)
         self.aws_access_key = kwargs.get("aws_access_key", None)
@@ -80,6 +86,10 @@ class Configuration:
         """
         Whether the object detection process should cache detections. By default
         this attribute is **False**.
+
+        Cached predictions are organized in folders determined by the
+        :attr:`~ cache_cash` property. Entries are either saved inside the
+        ``~/.doodl/cache`` or ``/tmp/.doodl/cache`` directory.
         """
         return self.__cache
 
@@ -89,3 +99,26 @@ class Configuration:
             value = False
 
         self.__cache = value
+
+    @property
+    def cache_hash(self):
+        """
+        Represent the hash key used to store predictions in the cache. Cached entries
+        will be organized using this hash value. This is useful when trying to
+        bypass previously cached results, or when manually removing entries from the
+        cache. By default, if no hash is specified, a new ``uuid.uuid4().hex`` is
+        assigned to this property.
+        """
+        return self.__cache_hash
+
+    @cache_hash.setter
+    def cache_hash(self, value):
+        if not value:
+            value = uuid.uuid4().hex
+
+        value = unicodedata.normalize("NFKD", value).encode("ASCII", "ignore")
+        value = "".join(
+            chr(c) for c in value if chr(c) in Configuration._VALID_CHARACTERS
+        )
+
+        self.__cache_hash = value

@@ -21,7 +21,7 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 class Predictor:
     def __init__(self, configuration: Configuration, cache: Cache):
-        self.backend, _ = Backend.register(configuration)
+        self.backend, self.backend_key, _ = Backend.register(configuration)
         self.configuration = configuration
         self.cache = cache
 
@@ -39,7 +39,7 @@ class ImagePredictor(Predictor):
     def inference(self, source):
         logging.info(f"Running inference on image...")
 
-        inference_cache_key = self.__get_key(source, "inference")
+        inference_cache_key = self.__get_key(source)
 
         predictions = None
 
@@ -66,7 +66,7 @@ class ImagePredictor(Predictor):
                 xmax = box[3]
 
                 prediction = [
-                    float(label - 1),
+                    int(label - 1),
                     score,
                     xmin,
                     ymin,
@@ -94,20 +94,9 @@ class ImagePredictor(Predictor):
         elif fragments.scheme == "file":
             image = self._get_image_from_file(source)
         else:
-            image = self._get_image_from_base64(source)
+            image = self._get_image_from_file(source)
 
         return image
-
-    def __get_key(self, source: str, suffix: str):
-        tmp = hashlib.md5(str(source).encode("utf8"))
-        tmp.update(str(suffix).encode("utf8"))
-        return tmp.hexdigest()
-
-    def _get_image_from_base64(self, source) -> np.array:
-        logging.info(f"Creating image from base64 string...")
-
-        image = Image.open(io.BytesIO(source))
-        return self.__numpy(image)
 
     def _get_image_from_s3(self, source) -> np.array:
         logging.info(f"Downloading image from S3. Filename {source}...")
@@ -159,6 +148,11 @@ class ImagePredictor(Predictor):
             return self.__numpy(Image.open(fragments.path))
 
         return self.__numpy(Image.open(source))
+
+    def __get_key(self, source: str):
+        tmp = hashlib.md5(str(source).encode("utf8"))
+        tmp.update(str(self.backend_key).encode("utf8"))
+        return tmp.hexdigest()
 
     def __numpy(self, image):
         (width, height) = image.size

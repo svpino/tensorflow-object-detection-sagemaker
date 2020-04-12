@@ -1,13 +1,13 @@
 version: "3.7"
 
 services:
-    object-detection:
+    doodl:
         build: 
             context: .
             args:                                                                      
                 ARCHITECTURE: "1.15.0"
-        image: object-detection:latest
-        container_name: object-detection
+        image: doodl:latest
+        container_name: doodl
         expose:
             - 8080
         environment:

@@ -1,12 +1,19 @@
 import os
+import io
 import json
+import base64
 import logging
 import logging.config
+import numpy as np
 
+from urllib.parse import urlparse
 from flask import Flask, request, Response, jsonify
+from PIL import Image
+from PIL import ImageFile
 
 from doodl import Model, Configuration, NumpyJsonSerializer
 
+ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 app = Flask(__name__)
 logging.basicConfig(level=logging.DEBUG)
@@ -18,25 +25,7 @@ logging.basicConfig(level=logging.DEBUG)
 PREFIX_PATH = "/opt/ml/"
 CACHE_PATH = os.path.join(PREFIX_PATH, "cache")
 MODEL_PATH = os.path.join(PREFIX_PATH, "model")
-PRETRAINED_MODEL_PATH = os.path.join(PREFIX_PATH, "pretrained")
 
-DEFAULT_MODEL = "faster_rcnn_inception_v2_coco.pb"
-
-PRETRAINED_MODELS = [
-    "ssd_mobilenet_v1_coco.pb",
-    "ssd_mobilenet_v2_coco.pb",
-    "faster_rcnn_resnet101_coco.pb",
-    "rfcn_resnet101_coco.pb",
-    "faster_rcnn_inception_v2_coco.pb",
-    "ssd_inception_v2_coco.pb",
-    "faster_rcnn_resnet50_coco.pb",
-    "faster_rcnn_resnet50_lowproposals_coco.pb",
-    "faster_rcnn_resnet101_lowproposals_coco.pb",
-    "faster_rcnn_inception_resnet_v2_atrous_coco.pb",
-    "faster_rcnn_inception_resnet_v2_atrous_lowproposals_coco.pb",
-    "faster_rcnn_nas_coco.pb",
-    "faster_rcnn_nas_lowproposals_coco.pb",
-]
 
 @app.route("/ping", methods=["GET"])
 def ping():
@@ -56,43 +45,32 @@ def ping():
 def invoke():
     """
     TODO:
-    
-    * Should cache key should include model that provided results?
-    * How should we use the cache_id? Maybe as a folder?
     * What happens if there are no detections?
-    * Is the "return only these classes" working?
-    * Add GPU support
+    * Test container
     * By default, MODEL_SERVER_WORKERS should be 1 if not specified
-    * Installation instructions should talk about model_path and what needs
-    to go inside.
-    * PRETRAINED_MODELS is not needed in REST docker. It is already part of the Backend.
-    * Remove pre-trained models from container
 
     * Check that we are exporting the right modules:
         import re
         print(dir(re))
 
     * Should we print the results on the backend logs?
-    * We need to document the usage of label_map.pbtxt
+
+    * Add GPU support
+
     * Clean README.md files
     * Link to repo from documentation
-
     * fix reference: (version 0.1 specified on installation)
-
-    * Loading a local file shouldn't need to use file://
+    * I should link to the Docker Hub page from docs (installation)
+    * Prepare notebook with example on how to use this.
 
     --- v2 ---
-
-    * The default values set by the rest impl should be set by the Configuration
-    * Add support to provide a threshold.
 
     * Add support to multiple (batch) images: https://stackoverflow.com/questions/49750520/run-inference-for-single-imageimage-graph-tensorflow-object-detection
     * Add support to provide a video: file | stride
     * Implement gRPC interface
     * Add Docker Hub description
-    * add visualization function to the library
-
-    * Prepare notebook with example on how to use this.
+    * add visualization function to the library (draw boxes on image)  
+    * Add support to provide a threshold.
 
     --- v3 ---
 
@@ -103,14 +81,12 @@ def invoke():
     if request.content_type == "application/json":
         data = request.get_json()
 
-        configuration = Configuration(data)
-        __update_model_reference(configuration)
+        configuration = Configuration(**data)
         configuration.endpoint = None
-        configuration.cache_path = CACHE_PATH
 
         logging.debug(f"Configuration: {configuration.__dict__}")
 
-        source = __get_source(data.get("source", None))
+        source = data.get("source", None)
         if source is None:
             return (
                 jsonify(
@@ -119,6 +95,8 @@ def invoke():
                 ),
                 400,
             )
+
+        source = __get_source(source)
 
         try:
             model = Model(configuration)
@@ -155,17 +133,15 @@ def __get_source(source):
         logging.debug("Source data is numpy.ndarray")
         return json.loads(source, object_hook=NumpyJsonSerializer.decoder)
 
-    return source
+    fragments = urlparse(source, allow_fragments=False)
+    if fragments.scheme in ("http", "https", "s3"):
+        logging.debug("Source data is URL")
+        return source
 
-
-def __update_model_reference(configuration):
-    if not configuration.model:
-        configuration.model = DEFAULT_MODEL
-
-    if not configuration.model.lower().endswith(".pb"):
-        configuration.model += ".pb"
-
-    if configuration.model in PRETRAINED_MODELS:
-        configuration.model_path = PRETRAINED_MODEL_PATH
-    elif not configuration.model_path:
-        configuration.model_path = MODEL_PATH
+    try:
+        image_data = base64.b64decode(source)
+        image = Image.open(io.BytesIO(image_data))
+        (width, height) = image.size
+        return np.array(image.getdata()).reshape((height, width, 3)).astype(np.uint8)
+    except Exception:
+        raise RuntimeError("There was an error decoding the source object.")

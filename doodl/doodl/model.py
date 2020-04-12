@@ -1,6 +1,10 @@
+import os
 import json
 import requests
+import base64
 import numpy as np
+
+from urllib.parse import urlparse
 
 from doodl import Configuration, ImagePredictor, Cache, NumpyJsonSerializer
 
@@ -43,15 +47,15 @@ class Model:
 
                 {
                     'predictions': [
-                        [0.0, 0.99, 0.18, 0.18, 0.36, 0.68],
-                        [2.0, 0.99, 0.52, 0.30, 0.92, 0.63]
+                        [0, 0.99, 0.18, 0.18, 0.36, 0.68],
+                        [2, 0.99, 0.52, 0.30, 0.92, 0.63]
                     ]
                 }
 
         Args:
             source(object): The image where we want to run inference. This argument
-                supports an HTTP/S or AWS S3 URL pointing to the object, or a
-                3-dimensional numpy array representing the image.
+                supports an HTTP/S or AWS S3 URL pointing to the object, the path of
+                the file, or a 3-dimensional numpy array representing the image.
         Returns:
             dict: A dictionary with a single *predictions* entry containing the list
                 of detected objects found in the source image.
@@ -86,9 +90,24 @@ class Model:
             return predictor.inference(source)
 
     def __get_serialized_source(self, source):
-        # If the source is specified as a Numpy array, we need to serialize it
+        # If the source is specified as a numpy array, we need to serialize it
         # to JSON.
         if isinstance(source, np.ndarray):
             return json.dumps(source, cls=NumpyJsonSerializer)
 
-        return source
+        if isinstance(source, str):
+            fragments = urlparse(source, allow_fragments=False)
+            if fragments.scheme in ("http", "https", "s3"):
+                return source
+
+            # At this point we can assume the image is a local file
+            if os.path.exists(source):
+                with open(source, "rb") as image:
+                    encoded_string = base64.b64encode(image.read())
+
+                return encoded_string.decode("utf-8")
+
+            raise RuntimeError(
+                "There was an error interpreting the source object. "
+                "Make sure you are specifying a valid URL, path, or numpy array."
+            )

@@ -7,7 +7,7 @@ from doodl import Backend, Configuration
 def test_pretrained_model_is_downloaded():
     configuration = Configuration()
 
-    backend, model_filename = Backend.register(configuration)
+    backend, _, model_filename = Backend.register(configuration)
     assert os.path.exists(model_filename) is True
 
     from doodl_tensorflow.backend import TensorflowBackend

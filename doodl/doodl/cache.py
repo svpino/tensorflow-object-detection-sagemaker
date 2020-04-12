@@ -25,7 +25,9 @@ class Cache:
 
     def get(self, key: str):
         if self.enabled:
-            entry = os.path.join(self.cache_path, f"{key}.npz")
+            entry = os.path.join(
+                self.cache_path, self.configuration.cache_hash, f"{key}.npz"
+            )
             if os.path.exists(entry):
                 data = np.load(entry, allow_pickle=True)
                 return data["data"]
@@ -34,4 +36,12 @@ class Cache:
 
     def put(self, key: str, value):
         if self.enabled:
-            np.savez_compressed(os.path.join(self.cache_path, f"{key}.npz"), data=value)
+            cache_hash_path = os.path.join(
+                self.cache_path, self.configuration.cache_hash
+            )
+            if not os.path.exists(cache_hash_path):
+                os.makedirs(cache_hash_path)
+
+            np.savez_compressed(
+                os.path.join(cache_hash_path, f"{key}.npz"), data=value,
+            )

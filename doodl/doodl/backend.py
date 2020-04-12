@@ -73,7 +73,7 @@ class Backend:
                     "Make sure you have 'doodl[tensorflow]' installed"
                 )
 
-        return Backend.backends[backend_key], model_filename
+        return Backend.backends[backend_key], backend_key, model_filename
 
     @staticmethod
     def _download_file(model, origin, model_subdir="model", doodl_dir=None):
