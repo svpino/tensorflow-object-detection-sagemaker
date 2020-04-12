@@ -45,26 +45,15 @@ class MockImagePredictor2(ImagePredictor):
         return "base64"
 
 
-def test_predictor_invalid_backend_raises_error():
-    configuration = Configuration({"backend": "invalid-backend"})
-
-    with pytest.raises(RuntimeError) as excinfo:
-        Predictor(configuration, cache=Cache(configuration))
-
-    assert "invalid-backend" in str(excinfo.value)
-
-
 def test_predictor_supports_custom_cache():
-    configuration = Configuration({"backend": "test_predictor.MockBackend1"})
+    configuration = Configuration()
     predictor = ImagePredictor(configuration, MockCache(configuration))
 
     assert isinstance(predictor.cache, MockCache)
 
 
 def test_image_returns_cached_predictions():
-    configuration = Configuration(
-        {"backend": "test_predictor.MockBackend1", "cache": True}
-    )
+    configuration = Configuration(cache=True)
 
     predictor = ImagePredictor(
         configuration, MockCache(configuration, value=np.array("123"))
@@ -73,9 +62,7 @@ def test_image_returns_cached_predictions():
 
 
 def test_image_runs_prediction_if_not_cached():
-    configuration = Configuration(
-        {"backend": "test_predictor.MockBackend1", "cache": True}
-    )
+    configuration = Configuration(cache=True)
 
     predictor = MockImagePredictor1(
         configuration, MockCache(configuration), image=np.array([0, 1, 2]),
@@ -112,9 +99,7 @@ def test_image_runs_prediction_if_not_cached():
 
 
 def test_get_image_supports_s3():
-    configuration = Configuration(
-        {"backend": "test_predictor.MockBackend1", "cache": True}
-    )
+    configuration = Configuration(cache=True)
 
     predictor = MockImagePredictor2(configuration, MockCache(configuration))
 
@@ -122,9 +107,7 @@ def test_get_image_supports_s3():
 
 
 def test_get_image_supports_url():
-    configuration = Configuration(
-        {"backend": "test_predictor.MockBackend1", "cache": True}
-    )
+    configuration = Configuration(cache=True)
 
     predictor = MockImagePredictor2(configuration, MockCache(configuration))
 
@@ -133,9 +116,7 @@ def test_get_image_supports_url():
 
 
 def test_get_image_supports_file():
-    configuration = Configuration(
-        {"backend": "test_predictor.MockBackend1", "cache": True}
-    )
+    configuration = Configuration(cache=True)
 
     predictor = MockImagePredictor2(configuration, MockCache(configuration))
 
@@ -143,19 +124,14 @@ def test_get_image_supports_file():
 
 
 def test_get_image_supports_base64():
-    configuration = Configuration(
-        {"backend": "test_predictor.MockBackend1", "cache": True}
-    )
-
+    configuration = Configuration(cache=True)
     predictor = MockImagePredictor2(configuration, MockCache(configuration))
 
     assert predictor._get_image("base64-string-here") == 'base64'
 
 
 def test_get_image_supports_ndarray():
-    configuration = Configuration(
-        {"backend": "test_predictor.MockBackend1", "cache": True}
-    )
+    configuration = Configuration(cache=True)
 
     predictor = ImagePredictor(configuration, MockCache(configuration))
 

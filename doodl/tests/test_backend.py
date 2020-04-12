@@ -1,17 +1,35 @@
-from doodl import Backend, Configuration, Predictor, Cache
+import os
+import pytest
 
-from mocks import MockBackend1, MockBackend2
+from doodl import Backend, Configuration
 
 
-def test_register_backend():
-    configuration1 = Configuration({"backend": "test_backend.MockBackend1"})
+def test_pretrained_model_is_downloaded():
+    configuration = Configuration()
 
-    configuration2 = Configuration({"backend": "test_backend.MockBackend2"})
+    backend, model_filename = Backend.register(configuration)
+    assert os.path.exists(model_filename) is True
 
-    Predictor(configuration1, cache=Cache(configuration1))
-    Predictor(configuration2, cache=Cache(configuration2))
+    from doodl_tensorflow.backend import TensorflowBackend
+    assert isinstance(backend, TensorflowBackend) is True
 
-    assert "test_backend.MockBackend1" in Backend.backends
-    assert "test_backend.MockBackend2" in Backend.backends
-    assert isinstance(Backend.backends["test_backend.MockBackend1"], MockBackend1)
-    assert isinstance(Backend.backends["test_backend.MockBackend2"], MockBackend2)
+
+def test_error_is_raised_if_model_is_not_targz():
+    configuration = Configuration(model="https://www.example.com/file.zip")
+
+    with pytest.raises(RuntimeError):
+        Backend.register(configuration)
+
+
+def test_error_is_raised_if_model_is_not_valid_url():
+    configuration = Configuration(model="something-invalid")
+
+    with pytest.raises(RuntimeError):
+        Backend.register(configuration)
+
+
+def test_error_is_raised_if_model_cant_be_downloaded():
+    configuration = Configuration(model="https://www.example.com/file.tar.gz")
+
+    with pytest.raises(RuntimeError):
+        Backend.register(configuration)

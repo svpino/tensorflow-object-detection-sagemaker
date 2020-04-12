@@ -38,7 +38,6 @@ PRETRAINED_MODELS = [
     "faster_rcnn_nas_lowproposals_coco.pb",
 ]
 
-
 @app.route("/ping", methods=["GET"])
 def ping():
     """This endpoint determines whether the container is working and healthy.
@@ -57,26 +56,47 @@ def ping():
 def invoke():
     """
     TODO:
+    
     * Should cache key should include model that provided results?
     * How should we use the cache_id? Maybe as a folder?
     * What happens if there are no detections?
     * Is the "return only these classes" working?
-
-    * Add support to provide a threshold.
+    * Add GPU support
+    * By default, MODEL_SERVER_WORKERS should be 1 if not specified
+    * Installation instructions should talk about model_path and what needs
+    to go inside.
+    * PRETRAINED_MODELS is not needed in REST docker. It is already part of the Backend.
+    * Remove pre-trained models from container
 
     * Check that we are exporting the right modules:
         import re
         print(dir(re))
 
     * Should we print the results on the backend logs?
+    * We need to document the usage of label_map.pbtxt
+    * Clean README.md files
+    * Link to repo from documentation
 
-    * Prepare notebook with example on how to use this.
+    * fix reference: (version 0.1 specified on installation)
+
+    * Loading a local file shouldn't need to use file://
 
     --- v2 ---
+
+    * The default values set by the rest impl should be set by the Configuration
+    * Add support to provide a threshold.
 
     * Add support to multiple (batch) images: https://stackoverflow.com/questions/49750520/run-inference-for-single-imageimage-graph-tensorflow-object-detection
     * Add support to provide a video: file | stride
     * Implement gRPC interface
+    * Add Docker Hub description
+    * add visualization function to the library
+
+    * Prepare notebook with example on how to use this.
+
+    --- v3 ---
+
+    * Optimize Docker image (it's sitting right now at 5.09 GB)
 
     """
 

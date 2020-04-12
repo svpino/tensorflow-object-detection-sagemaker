@@ -1,17 +1,11 @@
-import os
 import logging
 import numpy as np
 import tensorflow as tf
 
-from object_detection.utils import label_map_util
-
 
 class TensorflowBackend:
-    def __init__(self, model, model_path, **kwargs):
+    def __init__(self, model, **kwargs):
         self.model = model
-        self.model_path = os.path.join(model_path, self.model)
-        self.label_path = os.path.join(model_path, "label_map.pbtxt")
-
         self.__load_graph()
 
     def inference(self, image):
@@ -53,7 +47,7 @@ class TensorflowBackend:
         self.detection_graph = tf.Graph()
         with self.detection_graph.as_default() as default_graph:
             od_graph_def = tf.GraphDef()
-            with tf.gfile.GFile(self.model_path, "rb") as fid:
+            with tf.gfile.GFile(self.model, "rb") as fid:
                 serialized_graph = fid.read()
                 od_graph_def.ParseFromString(serialized_graph)
                 tf.import_graph_def(od_graph_def, name="")
@@ -62,8 +56,5 @@ class TensorflowBackend:
         config.gpu_options.allow_growth = True
         config.log_device_placement = True
 
-        self.category_index = label_map_util.create_category_index_from_labelmap(
-            self.label_path, use_display_name=True
-        )
         self.session = tf.Session(config=config, graph=default_graph)
         self.global_graph = default_graph

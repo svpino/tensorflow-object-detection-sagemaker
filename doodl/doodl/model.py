@@ -19,7 +19,7 @@ class Model:
             that should be used to set up the model, defaults to None
     """
 
-    def __init__(self, configuration: Configuration):
+    def __init__(self, configuration: Configuration = None):
         self.configuration = configuration or Configuration()
 
     def inference(self, source):

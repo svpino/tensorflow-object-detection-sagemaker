@@ -19,7 +19,8 @@ setup(
         "numpy",
         "Pillow",
         "boto3",
-        "requests"
+        "requests",
+        "six"
     ],
     zip_safe=False,
 )

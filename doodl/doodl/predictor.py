@@ -21,7 +21,7 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 class Predictor:
     def __init__(self, configuration: Configuration, cache: Cache):
-        self.backend = Backend.register(configuration.backend, configuration)
+        self.backend, _ = Backend.register(configuration)
         self.configuration = configuration
         self.cache = cache
 
