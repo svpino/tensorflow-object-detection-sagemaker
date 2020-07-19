@@ -2,7 +2,7 @@ ARG ARCHITECTURE=1.15.0-gpu
 FROM tensorflow/tensorflow:${ARCHITECTURE}-py3
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        wget zip unzip git ca-certificates curl nginx
+        wget zip unzip git ca-certificates curl nginx python-scipy
 
 # We need to install Protocol Buffers (Protobuf). Protobuf is Google's language and platform-neutral,  
 # extensible mechanism for serializing structured data. To make sure you are using the most updated code,
@@ -28,6 +28,7 @@ RUN pip install flask
 RUN pip install gevent
 RUN pip install gunicorn
 RUN pip install pycocotools
+RUN pip install scipy
 
 # Let's now download Tensorflow from the official Git repository and install Tensorflow Slim from
 # its folder.
